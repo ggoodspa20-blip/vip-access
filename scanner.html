@@ -156,7 +156,7 @@
     btnScan.innerHTML = "กำลังตรวจสอบสิทธิ์..."; 
     msg.innerHTML = "";
 
-    fetch(SCRIPT_URL + "?action=login&code=" + encodeURIComponent(code) + "&channel=" + encodeURIComponent(FIXED_CHANNEL))
+    fetch(SCRIPT_URL + "?action=verifyToken&token=" + encodeURIComponent(code))
       .then(res => res.json())
       .then(data => {
         if (data.status === "success") {
