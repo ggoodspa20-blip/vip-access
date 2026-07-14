@@ -122,8 +122,8 @@
     btnUpload.style.display = 'none';
     msg.innerHTML = "";
 
-    // ส่งตรวจรหัส
-    fetch(SCRIPT_URL + "?action=verifyToken&token=" + encodeURIComponent(code))
+    // เพิ่มเครื่องหมาย & + Date.now() ต่อท้าย เพื่อบังคับไม่ให้ LINE จำค่าเก่า (Cache)
+fetch(SCRIPT_URL + "?action=verifyToken&token=" + encodeURIComponent(code) + "&t=" + Date.now())
       .then(res => res.json())
       .then(data => {
         if (data.status === "success") {
