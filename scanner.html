@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIP MEMBER ACCESS</title>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap');
+      body { background: #111; font-family: 'Sarabun', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+      
+      #warningMessage {
+        display: none; background: #000; height: 100vh; width: 100vw; justify-content: center; align-items: center; color: #FF5252; text-align: center; padding: 20px; position: fixed; top: 0; left: 0; z-index: 9999;
+      }
+
+      .login-box { background: rgba(0, 0, 0, 0.9); padding: 30px; border: 1px solid #D4AF37; border-radius: 12px; text-align: center; width: 90%; max-width: 350px; box-shadow: 0 4px 20px rgba(212, 175, 55, 0.2); }
+      h2 { color: #D4AF37; margin-top: 0; margin-bottom: 25px; font-weight: 400; font-size: 24px; letter-spacing: 1px; }
+      
+      /* ปรับแต่งกล่องสำหรับสแกน */
+      #reader { width: 100%; border-radius: 8px; overflow: hidden; display: none; margin-bottom: 20px; background: #000; border: 1px solid #555; }
+      #reader video { border-radius: 8px; object-fit: cover; }
+      
+      .btn-gold { width: 100%; padding: 14px; margin-bottom: 10px; background: linear-gradient(45deg, #D4AF37, #C5A059); border: none; color: #000; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; text-decoration: none; display: inline-block; box-sizing: border-box; }
+      .btn-outline { background: transparent; border: 1px solid #D4AF37; color: #D4AF37; }
+      .btn-enter { background: linear-gradient(45deg, #4CAF50, #2E7D32) !important; color: white !important; margin-top: 15px; }
+      .error { color: #FF5252; margin-top: 15px; font-size: 14px; font-weight: bold; }
+      .logout-link { color: #888; font-size: 14px; cursor: pointer; margin-top: 20px; display: block; text-decoration: underline; }
+      
+      /* ซ่อนปุ่มอัปโหลดไฟล์ดั้งเดิม ให้ใช้ปุ่มเราแทน */
+      input[type="file"] { display: none; }
+    </style>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body>
+
+<div id="warningMessage">
+  <h2>⛔ ไม่อนุญาตให้เข้าถึง!<br><br><span style="font-size:16px; color:#D4AF37;">กรุณาเปิดผ่านแอปพลิเคชัน LINE เท่านั้น</span></h2>
+</div>
+
+<div class="login-box" id="loginFormContainer">
+  <h2>MEMBER ACCESS</h2>
+  
+  <div id="inputSection">
+    <div id="reader"></div>
+    <button onclick="startScanner()" id="btnScan" class="btn-gold">📷 เปิดกล้องสแกน QR CODE</button>
+    
+    <label for="qr-input-file" id="btnUpload" class="btn-gold btn-outline" style="display:block;">📁 เลือกรูป QR จากคลังภาพ</label>
+    <input type="file" id="qr-input-file" accept="image/*">
+  </div>
+
+  <div id="successSection" style="display:none;">
+    <p style="color:#fff; font-size:18px;">ยืนยันสิทธิ์สำเร็จ!</p>
+    <a id="finalLink" href="#" class="btn-gold btn-enter">เข้าสู่พื้นที่ VIP</a>
+    <span onclick="logout()" class="logout-link">ออกจากระบบ</span>
+  </div>
+  
+  <div id="message"></div>
+</div>
+
+<script>
+  // 🛡️ ป้องกันการเปิดนอก LINE
+  var isLineApp = navigator.userAgent.includes("Line");
+  if (!isLineApp) {
+     document.getElementById('loginFormContainer').style.display = 'none';
+     document.getElementById('warningMessage').style.display = 'flex';
+  }
+
+  // 🔴 1. วาง URL Apps Script (Web App) ของคุณที่นี่
+  var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwgL4S8F0sQIEiC3Bs_E_w1a9EbDoQaoDufRlIocD1RGnMlHxt-w63csISDlbPEfGYn/exec"; 
+
+  // 🔴 2. ชื่อ Channel ของหน้านี้
+  var FIXED_CHANNEL = "@Ggood"; 
+
+  var html5QrcodeScanner;
+
+  window.onload = function() {
+    if (!isLineApp) return; 
+    var savedLink = localStorage.getItem('vip_link');
+    if (savedLink) showSuccess(savedLink);
+  };
+
+  // --- ฟังก์ชัน 1: เปิดกล้องสแกน ---
+  function startScanner() {
+    document.getElementById('btnScan').style.display = 'none';
+    document.getElementById('btnUpload').style.display = 'none';
+    document.getElementById('reader').style.display = 'block';
+    document.getElementById('message').innerHTML = "<span style='color:#aaa; font-size:14px;'>กำลังขออนุญาตเข้าถึงกล้อง...</span>";
+
+    html5QrcodeScanner = new Html5Qrcode("reader");
+    html5QrcodeScanner.start(
+        { facingMode: "environment" }, 
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        onScanSuccess,
+        onScanFailure
+    ).then(() => {
+        document.getElementById('message').innerHTML = ""; 
+    }).catch(err => {
+        document.getElementById('message').innerHTML = "<span class='error'>โทรศัพท์ไม่อนุญาตให้ใช้กล้อง<br>กรุณาใช้ปุ่ม 'เลือกรูปจากคลังภาพ' แทนครับ</span>";
+        document.getElementById('btnScan').style.display = 'block';
+        document.getElementById('btnUpload').style.display = 'block';
+        document.getElementById('reader').style.display = 'none';
+    });
+  }
+
+  // --- ฟังก์ชัน 2: เลือกรูปจากอัลบั้ม (กรณีกล้องพัง/โดนบล็อก) ---
+  const fileinput = document.getElementById('qr-input-file');
+  fileinput.addEventListener('change', e => {
+      if (e.target.files.length == 0) return;
+      const imageFile = e.target.files[0];
+      
+      document.getElementById('message').innerHTML = "<span style='color:#aaa;'>กำลังอ่านรูปภาพ...</span>";
+      
+      const html5QrCode = new Html5Qrcode("reader");
+      html5QrCode.scanFile(imageFile, true)
+      .then(decodedText => {
+          onScanSuccess(decodedText, null);
+      })
+      .catch(err => {
+          document.getElementById('message').innerHTML = "<span class='error'>ไม่พบ QR Code ในรูปภาพนี้ กรุณาลองใหม่</span>";
+          fileinput.value = ""; // รีเซ็ตค่า
+      });
+  });
+
+  // --- ฟังก์ชันจัดการข้อมูลเมื่อสแกนเจอ ---
+  function onScanSuccess(decodedText, decodedResult) {
+    if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
+        html5QrcodeScanner.stop().then(() => {
+            document.getElementById('reader').style.display = 'none';
+        }).catch(err => console.log(err));
+    }
+    
+    var code = decodedText;
+    if (code.includes('token=')) {
+        try {
+            var urlParams = new URLSearchParams(code.split('?')[1]);
+            code = urlParams.get('token') || code;
+        } catch(e) {
+            code = code.split('token=')[1].split('&')[0];
+        }
+    }
+    checkCode(code.trim());
+  }
+
+  function onScanFailure(error) { }
+
+  // --- ฟังก์ชันส่งตรวจหลังบ้าน ---
+  function checkCode(code) {
+    var msg = document.getElementById('message');
+    var btnScan = document.getElementById('btnScan');
+    var btnUpload = document.getElementById('btnUpload');
+
+    if (!code) { msg.innerHTML = "<span class='error'>ข้อมูล QR ไม่ถูกต้อง</span>"; return; }
+
+    btnScan.style.display = 'block';
+    btnUpload.style.display = 'block';
+    btnScan.disabled = true; 
+    btnScan.innerHTML = "กำลังตรวจสอบสิทธิ์..."; 
+    msg.innerHTML = "";
+
+    fetch(SCRIPT_URL + "?action=login&code=" + encodeURIComponent(code) + "&channel=" + encodeURIComponent(FIXED_CHANNEL))
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === "success") {
+          localStorage.setItem('vip_link', data.message);
+          showSuccess(data.message);
+        } else {
+          msg.innerHTML = "<span class='error'>" + data.message + "</span>";
+          btnScan.disabled = false; 
+          btnScan.innerHTML = "📷 ลองสแกนใหม่อีกครั้ง";
+        }
+      })
+      .catch(err => {
+        msg.innerHTML = "<span class='error'>ระบบขัดข้อง โปรดลองใหม่</span>";
+        btnScan.disabled = false; 
+        btnScan.innerHTML = "📷 ลองสแกนใหม่อีกครั้ง";
+      });
+  }
+
+  function showSuccess(link) {
+    document.getElementById('inputSection').style.display = 'none';
+    
+    // บังคับให้การกดลิงก์พาไปทับหน้าเดิมเลย เพื่อให้ไหลลื่น
+    var finalBtn = document.getElementById('finalLink');
+    finalBtn.onclick = function(e) {
+        e.preventDefault();
+        window.location.replace(link);
+    };
+    
+    document.getElementById('successSection').style.display = 'block';
+  }
+  
+  function logout() { localStorage.removeItem('vip_link'); location.reload(); }
+</script>
+</body>
+</html>
